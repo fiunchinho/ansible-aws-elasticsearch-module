@@ -81,10 +81,16 @@ options:
     description:
       - IAM access policy as a JSON-formatted string.
     required: true
-  profile:
+  aws_access_key:
     description:
-      - Boto profile to use.
+      - AWS access key to sign the requests.
     required: true
+    aliases: ['aws_access_key', 'ec2_access_key']
+  aws_secret_key:
+    description:
+      - AWS secret key to sign the requests.
+    required: true
+    aliases: ['aws_secret_key', 'ec2_secret_key']
 requirements:
   - "python >= 2.6"
   - boto3
@@ -94,8 +100,9 @@ EXAMPLES = '''
 
 - ec2_elasticsearch:
     name: "my-cluster"
-    profile: "pre"
     region: "eu-west-1"
+    aws_access_key: "AKIAJ5CC6CARRKOX5V7Q"
+    aws_secret_key: "cfDKFSXEo1CC6gfhfhCARRKOX5V7Q"
     instance_type: "m3.medium.elasticsearch"
     instance_count: 2
     dedicated_master: True
@@ -120,7 +127,6 @@ def main():
     argument_spec = ec2_argument_spec()
     argument_spec.update(dict(
             name = dict(required=True),
-            region = dict(required=True, aliases = ['aws_region', 'ec2_region']),
             instance_type = dict(required=True),
             instance_count = dict(required=True),
             dedicated_master = dict(required=True),
@@ -142,8 +148,8 @@ def main():
         module.fail_json(msg='boto3 required for this module, install via pip or your package manager')
 
     try:
-        boto3.setup_default_session(profile_name=module.params.get('profile'))
-        client = boto3.client('es', module.params.get('region'))
+        # boto3.setup_default_session(profile_name=module.params.get('profile'))
+        client = boto3.client(service_name='es', region_name=module.params.get('region'), aws_access_key_id=module.params.get('aws_access_key'), aws_secret_access_key=module.params.get('aws_secret_key'))
     except (boto.exception.NoAuthHandlerFound, StandardError), e:
         module.fail_json(msg=str(e))
 

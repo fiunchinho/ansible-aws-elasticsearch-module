@@ -8,8 +8,9 @@ Just include this module in your 'library' folder and you could create a new clu
         - name: "Create ElasticSearch cluster"
           ec2_elasticsearch:
             name: "my-cluster"
-            profile: "preproduction"
-            region: "eu-west-1"
+            region: "us-west-1"
+            aws_access_key: "AKIAJ5CC6CARRKOX5V7Q2"
+            aws_secret_key: "cfDKFSXEo1CC6gfhfhCARRKOX5V7Q"
             instance_type: "m3.medium.elasticsearch"
             instance_count: 2
             dedicated_master: True
