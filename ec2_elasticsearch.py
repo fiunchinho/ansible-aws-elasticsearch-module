@@ -171,7 +171,7 @@ def main():
 
     if cluster_config['DedicatedMasterEnabled']:
         cluster_config['DedicatedMasterType'] = module.params.get('dedicated_master_instance_type')
-        cluster_config['DedicatedMasterCount'] = int(module.params.get('dedicated_master_instance_count')
+        cluster_config['DedicatedMasterCount'] = int(module.params.get('dedicated_master_instance_count'))
 
     if ebs_options['EBSEnabled']:
         ebs_options['VolumeType'] = module.params.get('volume_type')
