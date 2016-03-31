@@ -158,21 +158,29 @@ def main():
     except Exception as e:
         module.fail_json(msg='Failed to convert the policy into valid JSON: %s' % str(e))
 
+    cluster_config = {
+           'InstanceType': module.params.get('instance_type'),
+           'InstanceCount': int(module.params.get('instance_count')),
+           'DedicatedMasterEnabled': module.params.get('dedicated_master'),
+           'ZoneAwarenessEnabled': module.params.get('zone_awareness')
+    }
+
+    ebs_options = {
+           'EBSEnabled': module.params.get('ebs')
+    }
+
+    if cluster_config['DedicatedMasterEnabled']:
+        cluster_config['DedicatedMasterType'] = module.params.get('dedicated_master_instance_type')
+        cluster_config['DedicatedMasterCount'] = int(module.params.get('dedicated_master_instance_count')
+
+    if ebs_options['EBSEnabled']:
+        ebs_options['VolumeType'] = module.params.get('volume_type')
+        ebs_options['VolumeSize'] = int(module.params.get('volume_size'))
+
     response = client.create_elasticsearch_domain(
             DomainName=module.params.get('name'),
-            ElasticsearchClusterConfig={
-                'InstanceType': module.params.get('instance_type'),
-                'InstanceCount': module.params.get('instance_count'),
-                'DedicatedMasterEnabled': module.params.get('dedicated_master'),
-                'ZoneAwarenessEnabled': module.params.get('zone_awareness'),
-                'DedicatedMasterType': module.params.get('dedicated_master_instance_type'),
-                'DedicatedMasterCount': module.params.get('dedicated_master_instance_count')
-            },
-            EBSOptions={
-                'EBSEnabled': module.params.get('ebs'),
-                'VolumeType': module.params.get('volume_type'),
-                'VolumeSize': module.params.get('volume_size')
-            },
+            ElasticsearchClusterConfig=cluster_config,
+            EBSOptions=ebs_options,
             SnapshotOptions={
                 'AutomatedSnapshotStartHour': module.params.get('snapshot_hour')
             }
