@@ -128,16 +128,17 @@ def main():
     argument_spec.update(dict(
             name = dict(required=True),
             instance_type = dict(required=True),
-            instance_count = dict(required=True),
-            dedicated_master = dict(required=True),
-            zone_awareness = dict(required=True),
+            instance_count = dict(required=True, type='int'),
+            dedicated_master = dict(required=True, type='bool'),
+            zone_awareness = dict(required=True, type='bool'),
             dedicated_master_instance_type = dict(required=True),
-            dedicated_master_instance_count = dict(required=True),
-            ebs = dict(required=True),
+            dedicated_master_instance_count = dict(required=True, type='int'),
+            ebs = dict(required=True, type='bool'),
             volume_type = dict(required=True),
-            volume_size = dict(required=True),
+            volume_size = dict(required=True, type='int'),
             access_policies = dict(required=True),
-            snapshot_hour = dict(required=True),
+            snapshot_hour = dict(required=True, type='int'),
+            elasticsearch_version = dict(default='2.3'),
     ))
 
     module = AnsibleModule(
@@ -171,14 +172,15 @@ def main():
 
     if cluster_config['DedicatedMasterEnabled']:
         cluster_config['DedicatedMasterType'] = module.params.get('dedicated_master_instance_type')
-        cluster_config['DedicatedMasterCount'] = int(module.params.get('dedicated_master_instance_count'))
+        cluster_config['DedicatedMasterCount'] = module.params.get('dedicated_master_instance_count')
 
     if ebs_options['EBSEnabled']:
         ebs_options['VolumeType'] = module.params.get('volume_type')
-        ebs_options['VolumeSize'] = int(module.params.get('volume_size'))
+        ebs_options['VolumeSize'] = module.params.get('volume_size')
 
     response = client.create_elasticsearch_domain(
             DomainName=module.params.get('name'),
+            ElasticsearchVersion=module.params.get('elasticsearch_version'),
             ElasticsearchClusterConfig=cluster_config,
             EBSOptions=ebs_options,
             SnapshotOptions={
