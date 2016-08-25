@@ -8,9 +8,8 @@ Just include this module in your 'library' folder and you could create a new clu
         - name: "Create ElasticSearch cluster"
           ec2_elasticsearch:
             name: "my-cluster"
+            elasticsearch_version: "2.3"
             region: "us-west-1"
-            aws_access_key: "AKIAJ5CC6CARRKOX5V7Q2"
-            aws_secret_key: "cfDKFSXEo1CC6gfhfhCARRKOX5V7Q"
             instance_type: "m3.medium.elasticsearch"
             instance_count: 2
             dedicated_master: True
@@ -22,6 +21,7 @@ Just include this module in your 'library' folder and you could create a new clu
             volume_size: 10
             snapshot_hour: 13
             access_policies: "{{ lookup('file', 'cluster_policies.json') | from_json }}"
+            profile: "myawsaccount"
           register: response
 
 

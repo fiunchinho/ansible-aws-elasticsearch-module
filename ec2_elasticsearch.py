@@ -32,6 +32,10 @@ options:
     description:
       - Cluster name to be used.
     required: true
+  elasticsearch_version:
+    description:
+      - Elasticsearch version to deploy. Default is '2.3'.
+    required: false
   region:
     description:
       - The AWS region to use.
@@ -81,16 +85,10 @@ options:
     description:
       - IAM access policy as a JSON-formatted string.
     required: true
-  aws_access_key:
+  profile:
     description:
-      - AWS access key to sign the requests.
-    required: true
-    aliases: ['aws_access_key', 'ec2_access_key']
-  aws_secret_key:
-    description:
-      - AWS secret key to sign the requests.
-    required: true
-    aliases: ['aws_secret_key', 'ec2_secret_key']
+      - What Boto profile use to connect to AWS.
+    required: false
 requirements:
   - "python >= 2.6"
   - boto3
@@ -100,9 +98,8 @@ EXAMPLES = '''
 
 - ec2_elasticsearch:
     name: "my-cluster"
+    elasticsearch_version: "2.3"
     region: "eu-west-1"
-    aws_access_key: "AKIAJ5CC6CARRKOX5V7Q"
-    aws_secret_key: "cfDKFSXEo1CC6gfhfhCARRKOX5V7Q"
     instance_type: "m3.medium.elasticsearch"
     instance_count: 2
     dedicated_master: True
@@ -114,6 +111,7 @@ EXAMPLES = '''
     volume_size: 10
     snapshot_hour: 13
     access_policies: "{{ lookup('file', 'files/cluster_policies.json') | from_json }}"
+    profile: "myawsaccount"
 '''
 try:
     import boto3
