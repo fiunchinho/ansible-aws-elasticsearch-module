@@ -128,16 +128,17 @@ def main():
     argument_spec.update(dict(
             name = dict(required=True),
             instance_type = dict(required=True),
-            instance_count = dict(required=True),
-            dedicated_master = dict(required=True),
-            zone_awareness = dict(required=True),
+            instance_count = dict(required=True, type='int'),
+            dedicated_master = dict(required=True, type='bool'),
+            zone_awareness = dict(required=True, type='bool'),
             dedicated_master_instance_type = dict(required=True),
-            dedicated_master_instance_count = dict(required=True),
-            ebs = dict(required=True),
+            dedicated_master_instance_count = dict(required=True, type='int'),
+            ebs = dict(required=True, type='bool'),
             volume_type = dict(required=True),
-            volume_size = dict(required=True),
-            access_policies = dict(required=True),
-            snapshot_hour = dict(required=True),
+            volume_size = dict(required=True, type='int'),
+            access_policies = dict(required=True, type='dict'),
+            snapshot_hour = dict(required=True, type='int'),
+            elasticsearch_version = dict(default='2.3'),
     ))
 
     module = AnsibleModule(
@@ -147,11 +148,8 @@ def main():
     if not HAS_BOTO:
         module.fail_json(msg='boto3 required for this module, install via pip or your package manager')
 
-    try:
-        # boto3.setup_default_session(profile_name=module.params.get('profile'))
-        client = boto3.client(service_name='es', region_name=module.params.get('region'), aws_access_key_id=module.params.get('aws_access_key'), aws_secret_access_key=module.params.get('aws_secret_key'))
-    except (boto.exception.NoAuthHandlerFound, StandardError), e:
-        module.fail_json(msg=str(e))
+    region, ec2_url, aws_connect_params = get_aws_connection_info(module, True)
+    client = boto3_conn(module=module, conn_type='client', resource='es', region=region, **aws_connect_params)
 
     try:
         pdoc = json.dumps(module.params.get('access_policies'))
@@ -171,26 +169,24 @@ def main():
 
     if cluster_config['DedicatedMasterEnabled']:
         cluster_config['DedicatedMasterType'] = module.params.get('dedicated_master_instance_type')
-        cluster_config['DedicatedMasterCount'] = int(module.params.get('dedicated_master_instance_count'))
+        cluster_config['DedicatedMasterCount'] = module.params.get('dedicated_master_instance_count')
 
     if ebs_options['EBSEnabled']:
         ebs_options['VolumeType'] = module.params.get('volume_type')
-        ebs_options['VolumeSize'] = int(module.params.get('volume_size'))
+        ebs_options['VolumeSize'] = module.params.get('volume_size')
 
     response = client.create_elasticsearch_domain(
             DomainName=module.params.get('name'),
+            ElasticsearchVersion=module.params.get('elasticsearch_version'),
             ElasticsearchClusterConfig=cluster_config,
             EBSOptions=ebs_options,
             SnapshotOptions={
                 'AutomatedSnapshotStartHour': module.params.get('snapshot_hour')
-            }
+            },
+            AccessPolicies=pdoc,
     )
 
-    response_update = client.update_elasticsearch_domain_config(
-            DomainName=module.params.get('name'),
-            AccessPolicies=pdoc
-    )
-    module.exit_json(changed=True, response=response, policies=response_update["DomainConfig"]["AccessPolicies"]["Options"])
+    module.exit_json(changed=True, response=response)
 
 # import module snippets
 from ansible.module_utils.basic import *
