@@ -64,11 +64,11 @@ options:
   dedicated_master_instance_type:
     description:
       - The instance type for a dedicated master node.
-    required: true
+    required: false
   dedicated_master_instance_count:
     description:
       - Total number of dedicated master nodes, active and on standby, for the cluster.
-    required: true
+    required: false
   volume_type:
     description:
       - Specifies the volume type for EBS-based storage.
@@ -129,8 +129,8 @@ def main():
             instance_count = dict(required=True, type='int'),
             dedicated_master = dict(required=True, type='bool'),
             zone_awareness = dict(required=True, type='bool'),
-            dedicated_master_instance_type = dict(required=True),
-            dedicated_master_instance_count = dict(required=True, type='int'),
+            dedicated_master_instance_type = dict(),
+            dedicated_master_instance_count = dict(type='int'),
             ebs = dict(required=True, type='bool'),
             volume_type = dict(required=True),
             volume_size = dict(required=True, type='int'),
