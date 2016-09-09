@@ -64,11 +64,11 @@ options:
   dedicated_master_instance_type:
     description:
       - The instance type for a dedicated master node.
-    required: true
+    required: false
   dedicated_master_instance_count:
     description:
       - Total number of dedicated master nodes, active and on standby, for the cluster.
-    required: true
+    required: false
   volume_type:
     description:
       - Specifies the volume type for EBS-based storage.
@@ -114,6 +114,7 @@ EXAMPLES = '''
     profile: "myawsaccount"
 '''
 try:
+    import botocore
     import boto3
     import json
 
@@ -129,8 +130,8 @@ def main():
             instance_count = dict(required=True, type='int'),
             dedicated_master = dict(required=True, type='bool'),
             zone_awareness = dict(required=True, type='bool'),
-            dedicated_master_instance_type = dict(required=True),
-            dedicated_master_instance_count = dict(required=True, type='int'),
+            dedicated_master_instance_type = dict(),
+            dedicated_master_instance_count = dict(type='int'),
             ebs = dict(required=True, type='bool'),
             volume_type = dict(required=True),
             volume_size = dict(required=True, type='int'),
@@ -148,11 +149,6 @@ def main():
 
     region, ec2_url, aws_connect_params = get_aws_connection_info(module, True)
     client = boto3_conn(module=module, conn_type='client', resource='es', region=region, **aws_connect_params)
-
-    try:
-        pdoc = json.dumps(module.params.get('access_policies'))
-    except Exception as e:
-        module.fail_json(msg='Failed to convert the policy into valid JSON: %s' % str(e))
 
     cluster_config = {
            'InstanceType': module.params.get('instance_type'),
@@ -173,18 +169,65 @@ def main():
         ebs_options['VolumeType'] = module.params.get('volume_type')
         ebs_options['VolumeSize'] = module.params.get('volume_size')
 
-    response = client.create_elasticsearch_domain(
-            DomainName=module.params.get('name'),
-            ElasticsearchVersion=module.params.get('elasticsearch_version'),
-            ElasticsearchClusterConfig=cluster_config,
-            EBSOptions=ebs_options,
-            SnapshotOptions={
-                'AutomatedSnapshotStartHour': module.params.get('snapshot_hour')
-            },
-            AccessPolicies=pdoc,
-    )
+    snapshot_options = {
+        'AutomatedSnapshotStartHour': module.params.get('snapshot_hour')
+    }
 
-    module.exit_json(changed=True, response=response)
+    changed = False
+
+    try:
+        pdoc = json.dumps(module.params.get('access_policies'))
+    except Exception as e:
+        module.fail_json(msg='Failed to convert the policy into valid JSON: %s' % str(e))
+
+    try:
+        response = client.describe_elasticsearch_domain(DomainName=module.params.get('name'))
+        status = response['DomainStatus']
+
+        # Modify the provided policy to provide reliable changed detection
+        policy_dict = module.params.get('access_policies')
+        for statement in policy_dict['Statement']:
+            if 'Resource' not in statement:
+                # The ES APIs will implicitly set this
+                statement['Resource'] = '%s/*' % status['ARN']
+                pdoc = json.dumps(policy_dict)
+
+        if status['ElasticsearchClusterConfig'] != cluster_config:
+            changed = True
+
+        if status['EBSOptions'] != ebs_options:
+            changed = True
+
+        if status['SnapshotOptions'] != snapshot_options:
+            changed = True
+
+        current_policy_dict = json.loads(status['AccessPolicies'])
+        if current_policy_dict != policy_dict:
+            changed = True
+
+        if changed:
+            response = client.update_elasticsearch_domain_config(
+                    DomainName=module.params.get('name'),
+                    ElasticsearchClusterConfig=cluster_config,
+                    EBSOptions=ebs_options,
+                    SnapshotOptions=snapshot_options,
+                    AccessPolicies=pdoc,
+            )
+
+    except botocore.exceptions.ClientError as e:
+        changed = True
+
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            response = client.create_elasticsearch_domain(
+                    DomainName=module.params.get('name'),
+                    ElasticsearchVersion=module.params.get('elasticsearch_version'),
+                    ElasticsearchClusterConfig=cluster_config,
+                    EBSOptions=ebs_options,
+                    SnapshotOptions=snapshot_options,
+                    AccessPolicies=pdoc,
+            )
+
+    module.exit_json(changed=changed, response=response)
 
 # import module snippets
 from ansible.module_utils.basic import *
