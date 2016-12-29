@@ -226,6 +226,8 @@ def main():
                     SnapshotOptions=snapshot_options,
                     AccessPolicies=pdoc,
             )
+        else:
+            module.fail_json(msg='Error: %s' % str(e.response['Error']['Code']))
 
     module.exit_json(changed=changed, response=response)
 
