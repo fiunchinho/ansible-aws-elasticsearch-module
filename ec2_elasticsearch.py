@@ -226,6 +226,8 @@ def main():
                     SnapshotOptions=snapshot_options,
                     AccessPolicies=pdoc,
             )
+        elif e.response['Error']['Code'] == 'ValidationException':
+            module.fail_json(msg='Error: %s' % str(e.response['Error']['Message']))
         else:
             module.fail_json(msg='Error: %s' % str(e.response['Error']['Code']))
 
