@@ -1,8 +1,5 @@
 # Ansible AWS ElasticSearch module
 
-Adapted from fiunchinho.ansible-aws-elasticsearch-module. This repo
-shifts it into a role for ansible galaxy.
-
 For configuring/managing aws managed elasticsearch clusters
 
     ---
