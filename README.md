@@ -1,5 +1,6 @@
 # Ansible AWS ElasticSearch module
-Just include this module in your 'library' folder and you could create a new cluster executing a playbook like the following:
+
+For configuring/managing aws managed elasticsearch clusters
 
     ---
 

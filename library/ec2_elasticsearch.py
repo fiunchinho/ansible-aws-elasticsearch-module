@@ -227,7 +227,7 @@ def main():
                     AccessPolicies=pdoc,
             )
         else:
-            module.fail_json(msg='Error: %s' % str(e.response['Error']['Code']))
+            module.fail_json(msg='Error: %s %s' % (str(e.response['Error']['Code']), str(e.response['Error']['Message'])),)
 
     module.exit_json(changed=changed, response=response)
 
