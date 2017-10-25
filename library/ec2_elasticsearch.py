@@ -266,6 +266,8 @@ def main():
         else:
             module.fail_json(msg='Error: %s %s' % (str(e.response['Error']['Code']), str(e.response['Error']['Message'])),)
 
+    # Retrieve response from describe, as create/update differ in their response format
+    response = client.describe_elasticsearch_domain(DomainName=module.params.get('name'))
     module.exit_json(changed=changed, response=response)
 
 # import module snippets
