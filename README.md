@@ -20,10 +20,26 @@ For configuring/managing aws managed elasticsearch clusters
             ebs: True
             volume_type: "standard"
             volume_size: 10
+            vpc_subnets: "subnet-e537d64a"
+            vpc_security_groups: "sg-dd2f13cb"
             snapshot_hour: 13
             access_policies: "{{ lookup('file', 'cluster_policies.json') | from_json }}"
             profile: "myawsaccount"
           register: response
+
+## VPC Configuration
+
+### Endpoints
+
+Non VPC clusters give endpoints at `DomainStatus.Endpoint`, however VPC clusters return it at `DomainStatus.Endpoints.vpc`
+
+### Service Roles
+
+AWS currently provides no way to create the correct service role for a vpc limited elasticsearch cluster. To
+get the correct role configured in your account, create a test cluster in your vpc using the aws console. You can
+delete it afterwards. If you don't have this, the module will fail with this error:
+
+> Before you can proceed, you must enable a service-linked role to give Amazon ES permissions to access your VPC.
 
 ## Pitfalls
 
