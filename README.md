@@ -25,4 +25,10 @@ For configuring/managing aws managed elasticsearch clusters
             profile: "myawsaccount"
           register: response
 
+## Pitfalls
 
+Access Policies may trigger continual updates if the format in `cluster_policies.json` differs from the AWS
+returned value. To debug this, you can use the cli to get the policy back so you can compare or replace the contents
+of your `cluster_policies.json` file.
+
+`aws es describe-elasticsearch-domain --domain-name my-cluster --query DomainStatus.AccessPolicies --output text`
