@@ -77,6 +77,14 @@ options:
     description:
       - Integer to specify the size of an EBS volume.
     required: true
+  vpc_subnets:
+    description:
+      - Specifies the subnet ids for VPC endpoint.
+    required: false
+  vpc_security_groups:
+    description:
+      - Specifies the security group ids for VPC endpoint.
+    required: false
   snapshot_hour:
     description:
       - Integer value from 0 to 23 specifying when the service takes a daily automated snapshot of the specified Elasticsearch domain.
@@ -109,6 +117,8 @@ EXAMPLES = '''
     ebs: True
     volume_type: "standard"
     volume_size: 10
+    vpc_subnets: "subnet-e537d64a"
+    vpc_security_groups: "sg-dd2f13cb"
     snapshot_hour: 13
     access_policies: "{{ lookup('file', 'files/cluster_policies.json') | from_json }}"
     profile: "myawsaccount"
@@ -136,6 +146,8 @@ def main():
             volume_type = dict(required=True),
             volume_size = dict(required=True, type='int'),
             access_policies = dict(required=True, type='dict'),
+            vpc_subnets = dict(required=False),
+            vpc_security_groups = dict(required=False),
             snapshot_hour = dict(required=True, type='int'),
             elasticsearch_version = dict(default='2.3'),
     ))
@@ -160,6 +172,14 @@ def main():
     ebs_options = {
            'EBSEnabled': module.params.get('ebs')
     }
+
+    vpc_options = {}
+
+    if module.params.get('vpc_subnets'):
+        vpc_options['SubnetIds'] = [x.strip() for x in module.params.get('vpc_subnets').split(',')]
+
+    if module.params.get('vpc_security_groups'):
+        vpc_options['SecurityGroupIds'] = [x.strip() for x in module.params.get('vpc_security_groups').split(',')]
 
     if cluster_config['DedicatedMasterEnabled']:
         cluster_config['DedicatedMasterType'] = module.params.get('dedicated_master_instance_type')
@@ -198,6 +218,12 @@ def main():
         if status['EBSOptions'] != ebs_options:
             changed = True
 
+        if 'VPCOptions' in status:
+            if status['VPCOptions']['SubnetIds'] != vpc_options['SubnetIds']:
+                changed = True
+            if status['VPCOptions']['SecurityGroupIds'] != vpc_options['SecurityGroupIds']:
+                changed = True
+
         if status['SnapshotOptions'] != snapshot_options:
             changed = True
 
@@ -206,26 +232,37 @@ def main():
             changed = True
 
         if changed:
-            response = client.update_elasticsearch_domain_config(
-                    DomainName=module.params.get('name'),
-                    ElasticsearchClusterConfig=cluster_config,
-                    EBSOptions=ebs_options,
-                    SnapshotOptions=snapshot_options,
-                    AccessPolicies=pdoc,
-            )
+            keyword_args = {
+                'DomainName': module.params.get('name'),
+                'ElasticsearchClusterConfig': cluster_config,
+                'EBSOptions': ebs_options,
+                'SnapshotOptions': snapshot_options,
+                'AccessPolicies': pdoc,
+            }
+
+            if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
+                keyword_args['VPCOptions'] = vpc_options
+
+            response = client.update_elasticsearch_domain_config(**keyword_args)
 
     except botocore.exceptions.ClientError as e:
         changed = True
 
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            response = client.create_elasticsearch_domain(
-                    DomainName=module.params.get('name'),
-                    ElasticsearchVersion=module.params.get('elasticsearch_version'),
-                    ElasticsearchClusterConfig=cluster_config,
-                    EBSOptions=ebs_options,
-                    SnapshotOptions=snapshot_options,
-                    AccessPolicies=pdoc,
-            )
+            keyword_args = {
+                'DomainName': module.params.get('name'),
+                'ElasticsearchVersion': module.params.get('elasticsearch_version'),
+                'ElasticsearchClusterConfig': cluster_config,
+                'EBSOptions': ebs_options,
+                'SnapshotOptions': snapshot_options,
+                'AccessPolicies': pdoc,
+            }
+
+            if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
+                keyword_args['VPCOptions'] = vpc_options
+
+            response = client.create_elasticsearch_domain(**keyword_args)
+
         else:
             module.fail_json(msg='Error: %s %s' % (str(e.response['Error']['Code']), str(e.response['Error']['Message'])),)
 
