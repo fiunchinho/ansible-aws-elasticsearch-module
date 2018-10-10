@@ -97,6 +97,15 @@ options:
     description:
       - What Boto profile use to connect to AWS.
     required: false
+  encryption_at_rest_enabled:
+    description:
+      - Should data be encrypted while at rest.
+    required: false
+  encryption_at_rest_kms_key_id:
+    description:
+      - If encryption_at_rest_enabled is True, this identifies the encryption key to use 
+    required: false
+    
 requirements:
   - "python >= 2.6"
   - boto3
@@ -150,6 +159,8 @@ def main():
             vpc_security_groups = dict(required=False),
             snapshot_hour = dict(required=True, type='int'),
             elasticsearch_version = dict(default='2.3'),
+            encryption_at_rest_enabled = dict(default=False),
+            encryption_at_rest_kms_key_id = dict(required=False),
     ))
 
     module = AnsibleModule(
@@ -172,6 +183,14 @@ def main():
     ebs_options = {
            'EBSEnabled': module.params.get('ebs')
     }
+
+    encryption_at_rest_enabled = module.params.get('encryption_at_rest_enabled') == 'True'
+    encryption_at_rest_options = {
+        'Enabled': encryption_at_rest_enabled
+    }
+
+    if encryption_at_rest_enabled:
+        encryption_at_rest_options['KmsKeyId'] = module.params.get('encryption_at_rest_kms_key_id')
 
     vpc_options = {}
 
@@ -252,6 +271,7 @@ def main():
             keyword_args = {
                 'DomainName': module.params.get('name'),
                 'ElasticsearchVersion': module.params.get('elasticsearch_version'),
+                'EncryptionAtRestOptions': encryption_at_rest_options,
                 'ElasticsearchClusterConfig': cluster_config,
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
