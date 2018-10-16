@@ -107,7 +107,8 @@ options:
     required: false
   log_publishing_options:
     description: 
-      - Dict of available log types and their publishing options
+      - Dict of available log types and their publishing options. Valid log types are 'INDEX_SLOW_LOGS'|'SEARCH_SLOW_LOGS'|'ES_APPLICATION_LOGS'. Their options are: Enabled: boolean, CloudWatchLogsLogGroupArn: string
+    required: false
     
 requirements:
   - "python >= 2.6"
