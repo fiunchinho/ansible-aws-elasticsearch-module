@@ -105,6 +105,9 @@ options:
     description:
       - If encryption_at_rest_enabled is True, this identifies the encryption key to use 
     required: false
+  log_publishing_options:
+    description: 
+      - Dict of available log types and their publishing options
     
 requirements:
   - "python >= 2.6"
@@ -131,6 +134,14 @@ EXAMPLES = '''
     snapshot_hour: 13
     access_policies: "{{ lookup('file', 'files/cluster_policies.json') | from_json }}"
     profile: "myawsaccount"
+    log_publishing_options:
+        ES_APPLICATION_LOGS: 
+          Enabled: true
+          CloudWatchLogsLogGroupArn: "arn:aws:logs:eu-west-1:0123456789012:log-group:/aws/aes/domains/my-cluster/application-logs:*" 
+        SEARCH_SLOW_LOGS: 
+          Enabled: false
+        INDEX_SLOW_LOGS: 
+          Enabled: false
 '''
 try:
     import botocore
@@ -161,6 +172,7 @@ def main():
             elasticsearch_version = dict(default='2.3'),
             encryption_at_rest_enabled = dict(default=False),
             encryption_at_rest_kms_key_id = dict(required=False),
+            log_publishing_options = dict(required=False, type='dict'),
     ))
 
     module = AnsibleModule(
@@ -221,6 +233,7 @@ def main():
 
     try:
         response = client.describe_elasticsearch_domain(DomainName=module.params.get('name'))
+
         status = response['DomainStatus']
 
         # Modify the provided policy to provide reliable changed detection
@@ -250,6 +263,21 @@ def main():
         if current_policy_dict != policy_dict:
             changed = True
 
+
+        log_publishing_options = status['LogPublishingOptions']
+        desired_log_publishing_options = module.params.get('log_publishing_options')
+        if len(log_publishing_options) != 0 and len(desired_log_publishing_options) != 0:
+            if len(log_publishing_options) != len(desired_log_publishing_options):
+                changed = True
+            else:
+                for log_type in log_publishing_options:
+                    try:
+                        if log_publishing_options[log_type] != desired_log_publishing_options[log_type]:
+                            changed = True
+                    except KeyError:
+                        changed = True
+
+
         if changed:
             keyword_args = {
                 'DomainName': module.params.get('name'),
@@ -257,6 +285,7 @@ def main():
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
                 'AccessPolicies': pdoc,
+                'LogPublishingOptions': desired_log_publishing_options
             }
 
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
@@ -276,6 +305,7 @@ def main():
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
                 'AccessPolicies': pdoc,
+                'LogPublishingOptions': module.params.get('log_publishing_options'),
             }
 
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
