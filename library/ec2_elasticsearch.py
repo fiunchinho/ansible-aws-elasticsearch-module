@@ -267,16 +267,19 @@ def main():
 
         log_publishing_options = status['LogPublishingOptions']
         desired_log_publishing_options = module.params.get('log_publishing_options')
-        if len(log_publishing_options) != 0 and len(desired_log_publishing_options) != 0:
-            if len(log_publishing_options) != len(desired_log_publishing_options):
+        if len(log_publishing_options) != 0:
+            if len(desired_log_publishing_options) == 0:
                 changed = True
             else:
-                for log_type in log_publishing_options:
-                    try:
-                        if log_publishing_options[log_type] != desired_log_publishing_options[log_type]:
+                if len(log_publishing_options) != len(desired_log_publishing_options):
+                    changed = True
+                else:
+                    for log_type in log_publishing_options:
+                        try:
+                            if log_publishing_options[log_type] != desired_log_publishing_options[log_type]:
+                                changed = True
+                        except KeyError:
                             changed = True
-                    except KeyError:
-                        changed = True
 
 
         if changed:
