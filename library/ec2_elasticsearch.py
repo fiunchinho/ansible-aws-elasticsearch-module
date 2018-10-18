@@ -265,7 +265,13 @@ def main():
             changed = True
 
 
-        log_publishing_options = status['LogPublishingOptions']
+        log_publishing_options = {}
+
+        try:
+            log_publishing_options = status['LogPublishingOptions']
+        except KeyError:
+            print("No existing LogPublishingOptions")
+
         desired_log_publishing_options = module.params.get('log_publishing_options')
         if len(log_publishing_options) != 0:
             if len(desired_log_publishing_options) == 0:
