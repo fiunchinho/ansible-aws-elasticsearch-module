@@ -225,6 +225,10 @@ def main():
         'AutomatedSnapshotStartHour': module.params.get('snapshot_hour')
     }
 
+    desired_log_publishing_options = module.params.get('log_publishing_options')
+    if desired_log_publishing_options is None:
+        desired_log_publishing_options = {}
+
     changed = False
 
     try:
@@ -272,10 +276,6 @@ def main():
         except KeyError:
             print("No existing LogPublishingOptions")
 
-        desired_log_publishing_options = module.params.get('log_publishing_options')
-        if desired_log_publishing_options is None:
-            desired_log_publishing_options = {}
-
         if len(log_publishing_options) != 0:
             if len(desired_log_publishing_options) == 0:
                 changed = True
@@ -318,7 +318,7 @@ def main():
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
                 'AccessPolicies': pdoc,
-                'LogPublishingOptions': module.params.get('log_publishing_options'),
+                'LogPublishingOptions': desired_log_publishing_options,
             }
 
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
