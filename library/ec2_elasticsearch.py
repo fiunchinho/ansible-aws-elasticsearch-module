@@ -273,6 +273,9 @@ def main():
             print("No existing LogPublishingOptions")
 
         desired_log_publishing_options = module.params.get('log_publishing_options')
+        if desired_log_publishing_options is None:
+            desired_log_publishing_options = {}
+
         if len(log_publishing_options) != 0:
             if len(desired_log_publishing_options) == 0:
                 changed = True
