@@ -57,6 +57,10 @@ options:
     description:
       - A boolean value to indicate whether zone awareness is enabled.
     required: true
+  zone_awareness_zonecount
+    description:
+      - Total number of Availability Zones, for the cluster.
+    required: false
   ebs:
     description:
       - Specifies whether EBS-based storage is enabled.
@@ -89,6 +93,10 @@ options:
     description:
       - What Boto profile use to connect to AWS.
     required: false
+  tags:
+    description:
+      - An associative array of tags. To delete all tags, supply an empty dict.
+    required: false
 requirements:
   - "python >= 2.6"
   - boto3
@@ -104,6 +112,7 @@ EXAMPLES = '''
     instance_count: 2
     dedicated_master: True
     zone_awareness: True
+    zone_awareness_zonecount: 1
     dedicated_master_instance_type: "t2.micro.elasticsearch"
     dedicated_master_instance_count: 2
     ebs: True
@@ -130,6 +139,7 @@ def main():
             instance_count = dict(required=True, type='int'),
             dedicated_master = dict(required=True, type='bool'),
             zone_awareness = dict(required=True, type='bool'),
+            zone_awareness_zonecount = dict(required=True, type='int'),
             dedicated_master_instance_type = dict(),
             dedicated_master_instance_count = dict(type='int'),
             ebs = dict(required=True, type='bool'),
@@ -138,6 +148,7 @@ def main():
             access_policies = dict(required=True, type='dict'),
             snapshot_hour = dict(required=True, type='int'),
             elasticsearch_version = dict(default='2.3'),
+            tags = dict(required=False, type='dict'),
     ))
 
     module = AnsibleModule(
@@ -150,12 +161,22 @@ def main():
     region, ec2_url, aws_connect_params = get_aws_connection_info(module, True)
     client = boto3_conn(module=module, conn_type='client', resource='es', region=region, **aws_connect_params)
 
+    #-- https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/es.html#ElasticsearchService.Client.create_elasticsearch_domain
+    #-- https://docs.aws.amazon.com/de_de/elasticsearch-service/latest/developerguide/es-managedomains.html
+    #   Under point "Availability Zone Disruptions" you will see the gain of this option
+    cluster_zoneawareness_config = { 
+            'AvailabilityZoneCount': module.params.get('zone_awareness_zonecount')
+    } 
+
     cluster_config = {
            'InstanceType': module.params.get('instance_type'),
            'InstanceCount': int(module.params.get('instance_count')),
            'DedicatedMasterEnabled': module.params.get('dedicated_master'),
-           'ZoneAwarenessEnabled': module.params.get('zone_awareness')
+           'ZoneAwarenessEnabled': module.params.get('zone_awareness'),
+           'ZoneAwarenessConfig': cluster_zoneawareness_config
     }
+
+    tags = module.params.get('tags')
 
     ebs_options = {
            'EBSEnabled': module.params.get('ebs')
@@ -214,6 +235,15 @@ def main():
                     AccessPolicies=pdoc,
             )
 
+            #-- Get saved Tags
+            status = response['DomainStatus']
+            listTags = client.list_tags(ARN=status['ARN'])
+            #-- Remove Key/Value-Construct
+            adddict = {}
+            for i, entry in enumerate(listTags['TagList']):
+                adddict[entry['Key']] = entry['Value']
+            response.update({ 'TagList': [ adddict ] })
+
     except botocore.exceptions.ClientError as e:
         changed = True
 
@@ -226,8 +256,29 @@ def main():
                     SnapshotOptions=snapshot_options,
                     AccessPolicies=pdoc,
             )
-        else:
-            module.fail_json(msg='Error: %s' % str(e.response['Error']['Code']))
+            response = client.describe_elasticsearch_domain(
+                    DomainName=module.params.get('name')
+            )
+            status = response['DomainStatus']
+
+            #-- Save tags
+            dictadd = []
+            for (key, value) in set(tags.items()):
+                dictadd.append({'Key': key,'Value': value})
+            if not module.check_mode:
+                response = client.add_tags(
+                                ARN = status['ARN'],
+                                TagList = dictadd
+                )
+
+            #-- Get saved Tags
+            listTags = client.list_tags(ARN=status['ARN'])
+            #-- Remove Key/Value-Construct
+            adddict = {}
+            for i, entry in enumerate(listTags['TagList']):
+                adddict[entry['Key']] = entry['Value']
+            response.update({ 'TagList': [ adddict ] })
+
 
     module.exit_json(changed=changed, response=response)
 
@@ -237,3 +288,4 @@ from ansible.module_utils.ec2 import *
 
 if __name__ == '__main__':
     main()
+
