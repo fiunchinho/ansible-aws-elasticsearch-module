@@ -139,7 +139,7 @@ def main():
             instance_count = dict(required=True, type='int'),
             dedicated_master = dict(required=True, type='bool'),
             zone_awareness = dict(required=True, type='bool'),
-            zone_awareness_zonecount = dict(required=True, type='int'),
+            zone_awareness_zonecount = dict(required=False, default=1, type='int'),
             dedicated_master_instance_type = dict(),
             dedicated_master_instance_count = dict(type='int'),
             ebs = dict(required=True, type='bool'),
@@ -161,20 +161,19 @@ def main():
     region, ec2_url, aws_connect_params = get_aws_connection_info(module, True)
     client = boto3_conn(module=module, conn_type='client', resource='es', region=region, **aws_connect_params)
 
-    #-- https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/es.html#ElasticsearchService.Client.create_elasticsearch_domain
-    #-- https://docs.aws.amazon.com/de_de/elasticsearch-service/latest/developerguide/es-managedomains.html
-    #   Under point "Availability Zone Disruptions" you will see the gain of this option
-    cluster_zoneawareness_config = { 
-            'AvailabilityZoneCount': module.params.get('zone_awareness_zonecount')
-    } 
-
     cluster_config = {
-           'InstanceType': module.params.get('instance_type'),
-           'InstanceCount': int(module.params.get('instance_count')),
-           'DedicatedMasterEnabled': module.params.get('dedicated_master'),
-           'ZoneAwarenessEnabled': module.params.get('zone_awareness'),
-           'ZoneAwarenessConfig': cluster_zoneawareness_config
-    }
+                'InstanceType': module.params.get('instance_type'),
+                'InstanceCount': int(module.params.get('instance_count')),
+                'DedicatedMasterEnabled': module.params.get('dedicated_master'),
+                'ZoneAwarenessEnabled': module.params.get('zone_awareness')
+      }    
+    if module.params.get('zone_awareness'):
+      #-- https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/es.html#ElasticsearchService.Client.create_elasticsearch_domain
+      #-- https://docs.aws.amazon.com/de_de/elasticsearch-service/latest/developerguide/es-managedomains.html
+      #   Under point "Availability Zone Disruptions" you will see the gain of this option
+      cluster_config['ZoneAwarenessConfig'] = { 
+                  'AvailabilityZoneCount': module.params.get('zone_awareness_zonecount') 
+          }
 
     tags = module.params.get('tags')
 
