@@ -131,6 +131,16 @@ try:
 except ImportError:
     HAS_BOTO=False
 
+# import logging
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.INFO)
+# handler = logging.FileHandler('search.log')
+# handler.setLevel(logging.INFO)
+# formatter = logging.Formatter(
+#    '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# handler.setFormatter(formatter)
+# logger.addHandler(handler)
+
 def main():
     argument_spec = ec2_argument_spec()
     argument_spec.update(dict(
@@ -172,10 +182,14 @@ def main():
       #-- https://docs.aws.amazon.com/de_de/elasticsearch-service/latest/developerguide/es-managedomains.html
       #   Under point "Availability Zone Disruptions" you will see the gain of this option
       cluster_config['ZoneAwarenessConfig'] = { 
-                  'AvailabilityZoneCount': module.params.get('zone_awareness_zonecount') 
+                  'AvailabilityZoneCount': int(module.params.get('zone_awareness_zonecount'))
           }
+    
+        
 
+    # logger.info('TAGS:')
     tags = module.params.get('tags')
+    # logger.info(tags)
 
     ebs_options = {
            'EBSEnabled': module.params.get('ebs')
@@ -265,6 +279,7 @@ def main():
             for (key, value) in set(tags.items()):
                 dictadd.append({'Key': key,'Value': value})
             if not module.check_mode:
+                # logger.info(dictadd)
                 response = client.add_tags(
                                 ARN = status['ARN'],
                                 TagList = dictadd
@@ -287,4 +302,3 @@ from ansible.module_utils.ec2 import *
 
 if __name__ == '__main__':
     main()
-
