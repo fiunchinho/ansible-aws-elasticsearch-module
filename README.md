@@ -15,12 +15,13 @@ For configuring/managing aws managed elasticsearch clusters
             instance_count: 2
             dedicated_master: True
             zone_awareness: True
+            zone_awareness_zonecount = 2
             dedicated_master_instance_type: "t2.micro.elasticsearch"
             dedicated_master_instance_count: 2
             ebs: True
             volume_type: "standard"
             volume_size: 10
-            vpc_subnets: "subnet-e537d64a"
+            vpc_subnets: "subnet-e537d64a,subnet-12345678"
             vpc_security_groups: "sg-dd2f13cb"
             snapshot_hour: 13
             access_policies: "{{ lookup('file', 'cluster_policies.json') | from_json }}"
