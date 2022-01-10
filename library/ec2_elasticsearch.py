@@ -32,79 +32,99 @@ options:
     description:
       - Cluster name to be used.
     required: true
+    type: str
   elasticsearch_version:
     description:
-      - Elasticsearch version to deploy. Default is '2.3'.
+      - Elasticsearch version to deploy.
     required: false
+    type: str
+    default: "2.3"
   region:
     description:
       - The AWS region to use.
     required: true
     aliases: ['aws_region', 'ec2_region']
+    type: str
   instance_type:
     description:
       - Type of the instances to use for the cluster. Valid types are: 'm3.medium.elasticsearch'|'m3.large.elasticsearch'|'m3.xlarge.elasticsearch'|'m3.2xlarge.elasticsearch'|'t2.micro.elasticsearch'|'t2.small.elasticsearch'|'t2.medium.elasticsearch'|'r3.large.elasticsearch'|'r3.xlarge.elasticsearch'|'r3.2xlarge.elasticsearch'|'r3.4xlarge.elasticsearch'|'r3.8xlarge.elasticsearch'|'i2.xlarge.elasticsearch'|'i2.2xlarge.elasticsearch'
     required: true
+    type: str
   instance_count:
     description:
       - Number of instances for the cluster.
     required: true
+    type: int
   dedicated_master:
     description:
       - A boolean value to indicate whether a dedicated master node is enabled.
     required: true
+    type: bool
   zone_awareness:
     description:
       - A boolean value to indicate whether zone awareness is enabled.
     required: true
+    type: bool
   ebs:
     description:
       - Specifies whether EBS-based storage is enabled.
     required: true
+    type: bool
   dedicated_master_instance_type:
     description:
       - The instance type for a dedicated master node.
     required: false
+    type: str
   dedicated_master_instance_count:
     description:
       - Total number of dedicated master nodes, active and on standby, for the cluster.
     required: false
+    type: int
   volume_type:
     description:
-      - Specifies the volume type for EBS-based storage.
+      - Specifies the volume type for EBS-based storage. "standard"|"gp2"|"io1"
     required: true
+    type: str
   volume_size:
     description:
       - Integer to specify the size of an EBS volume.
     required: true
+    type: int
   vpc_subnets:
     description:
       - Specifies the subnet ids for VPC endpoint.
     required: false
+    type: list
   vpc_security_groups:
     description:
       - Specifies the security group ids for VPC endpoint.
     required: false
+    type: list
   snapshot_hour:
     description:
       - Integer value from 0 to 23 specifying when the service takes a daily automated snapshot of the specified Elasticsearch domain.
     required: true
+    type: int
   access_policies:
     description:
       - IAM access policy as a JSON-formatted string.
     required: true
+    type: dict
   profile:
     description:
       - What Boto profile use to connect to AWS.
     required: false
+    type: str
   encryption_at_rest_enabled:
     description:
       - Should data be encrypted while at rest.
     required: false
+    type: bool
   encryption_at_rest_kms_key_id:
     description:
       - If encryption_at_rest_enabled is True, this identifies the encryption key to use 
     required: false
+    type: str
     
 requirements:
   - "python >= 2.6"
@@ -116,6 +136,7 @@ EXAMPLES = '''
 - ec2_elasticsearch:
     name: "my-cluster"
     elasticsearch_version: "2.3"
+    engine_type: elasticsearch
     region: "eu-west-1"
     instance_type: "m3.medium.elasticsearch"
     instance_count: 2
@@ -155,8 +176,8 @@ def main():
             volume_type = dict(required=True),
             volume_size = dict(required=True, type='int'),
             access_policies = dict(required=True, type='dict'),
-            vpc_subnets = dict(required=False),
-            vpc_security_groups = dict(required=False),
+            vpc_subnets = dict(type='list', elements='str', required=False),
+            vpc_security_groups = dict(type='list', elements='str', required=False),
             snapshot_hour = dict(required=True, type='int'),
             elasticsearch_version = dict(default='2.3'),
             encryption_at_rest_enabled = dict(default=False),
@@ -193,12 +214,17 @@ def main():
         encryption_at_rest_options['KmsKeyId'] = module.params.get('encryption_at_rest_kms_key_id')
 
     vpc_options = {}
+    vpc_subnets = module.params.get('vpc_subnets')
+    if vpc_subnets:
+        if isinstance(vpc_subnets, string_types):
+            vpc_subnets = [x.strip() for x in vpc_subnets.split(',')]
+        vpc_options['SubnetIds'] = vpc_subnets
 
-    if module.params.get('vpc_subnets'):
-        vpc_options['SubnetIds'] = [x.strip() for x in module.params.get('vpc_subnets').split(',')]
-
-    if module.params.get('vpc_security_groups'):
-        vpc_options['SecurityGroupIds'] = [x.strip() for x in module.params.get('vpc_security_groups').split(',')]
+    vpc_security_groups = module.params.get('vpc_security_groups')
+    if vpc_security_groups:
+        if isinstance(vpc_security_groups, string_types):
+            vpc_security_groups = [x.strip() for x in vpc_security_groups.split(',')]
+        vpc_options['SecurityGroupIds'] = vpc_security_groups
 
     if cluster_config['DedicatedMasterEnabled']:
         cluster_config['DedicatedMasterType'] = module.params.get('dedicated_master_instance_type')
