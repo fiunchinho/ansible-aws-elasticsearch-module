@@ -232,9 +232,9 @@ def main():
     module = AnsibleModule(
             argument_spec=argument_spec,
             required_if=[
-                ('warm_enabled', True, ('warm_type', 'warm_count')),
-                ('zone_awareness', True, ('availability_zone_count')),
-                ('dedicated_master', True, ('dedicated_master_instance_type', 'dedicated_master_instance_count')),
+                ('warm_enabled', True, ['warm_type', 'warm_count']),
+                ('zone_awareness', True, ['availability_zone_count']),
+                ('dedicated_master', True, ['dedicated_master_instance_type', 'dedicated_master_instance_count']),
             ],
     )
 
@@ -250,6 +250,9 @@ def main():
            'DedicatedMasterEnabled': module.params.get('dedicated_master'),
            'ZoneAwarenessEnabled': module.params.get('zone_awareness'),
            'WarmEnabled': module.params.get('warm_enabled'),
+           'ColdStorageOptions': {
+              'Enabled': module.params.get('cold_storage_enabled'),
+           },
     }
     if module.params.get('zone_awareness'):
         cluster_config['ZoneAwarenessConfig'] = {
@@ -259,11 +262,6 @@ def main():
     if module.params.get('warm_enabled'):
         cluster_config['WarmType'] = module.params.get('warm_type')
         cluster_config['WarmCount'] = module.params.get('warm_count')
-
-    if module.params.get('cold_storage_enabled'):
-        cluster_config['ColdStorageOptions'] = {
-            'Enabled': module.params.get('cold_storage_enabled')
-        }
 
     ebs_options = {
            'EBSEnabled': module.params.get('ebs')
