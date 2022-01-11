@@ -370,7 +370,7 @@ def main():
         if 'ElasticsearchVersion' in status.keys():
             if module.params.get('engine_type') != 'ElasticSearch':
                 changed = True
-            if module.params.get('version') != status['ElasticSearchVersion']:
+            if module.params.get('version') != status['ElasticsearchVersion']:
                 changed = True
         elif 'EngineVersion' in status.keys():
             if engine_version != status['EngineVersion']:
