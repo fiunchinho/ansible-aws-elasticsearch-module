@@ -218,6 +218,7 @@ EXAMPLES = '''
     snapshot_hour: 13
     access_policies: "{{ lookup('file', 'files/cluster_policies.json') | from_json }}"
     profile: "myawsaccount"
+    encryption_at_rest_enabled: false
 '''
 try:
     import botocore
@@ -269,6 +270,7 @@ def main():
                 ('dedicated_master', True, ['dedicated_master_instance_type', 'dedicated_master_instance_count']),
                 ('ebs', True, ['volume_type', 'volume_size']),
                 ('cognito_enabled', True, ['cognito_user_pool_id', 'cognito_identity_pool_id', 'cognito_role_arn']),
+                ('encryption_at_rest_enabled', True, ['encryption_at_rest_kms_key_id']),
             ],
     )
 
