@@ -367,13 +367,17 @@ def main():
                 statement['Resource'] = '%s/*' % status['ARN']
                 pdoc = json.dumps(policy_dict)
 
-        if 'ElasticSearchVersion' in status.keys():
+        if 'ElasticsearchVersion' in status.keys():
             if module.params.get('engine_type') != 'ElasticSearch':
                 changed = True
             if module.params.get('version') != status['ElasticSearchVersion']:
                 changed = True
-        elif 'EngineVersion' in status.keys() and engine_version != status['EngineVersion']:
-            changed = True
+        elif 'EngineVersion' in status.keys():
+            if engine_version != status['EngineVersion']:
+                changed = True
+        else:
+            # This is not expected. The response should have either 'ElasticsearchVersion' or 'EngineVersion'.
+            raise Exception('Unable to obtain current version of OpenSearch cluster')
 
         if status['ElasticsearchClusterConfig'] != cluster_config:
             changed = True
