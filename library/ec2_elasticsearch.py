@@ -138,8 +138,9 @@ options:
   snapshot_hour:
     description:
       - Integer value from 0 to 23 specifying when the service takes a daily automated snapshot of the specified Elasticsearch domain.
-    required: true
+    required: false
     type: int
+    default: 0
   access_policies:
     description:
       - IAM access policy as a JSON-formatted string.
@@ -229,7 +230,7 @@ def main():
             access_policies = dict(required=True, type='dict'),
             vpc_subnets = dict(type='list', elements='str', required=False),
             vpc_security_groups = dict(type='list', elements='str', required=False),
-            snapshot_hour = dict(required=True, type='int'),
+            snapshot_hour = dict(required=False, type='int', default=0),
             engine_type = dict(default='ElasticSearch'),
             elasticsearch_version = dict(default='2.3'),
             encryption_at_rest_enabled = dict(default=False),
