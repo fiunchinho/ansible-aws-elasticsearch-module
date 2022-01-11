@@ -30,12 +30,19 @@ author: "Jose Armesto (@fiunchinho)"
 options:
   name:
     description:
-      - Cluster name to be used.
+      - The name of the Amazon OpenSearch/ElasticSearch Service domain.
+        Domain names are unique across the domains owned by an account within an AWS region.
     required: true
     type: str
+  engine_type:
+    description:
+      - The engine type to use. "ElasticSearch" | "OpenSearch"
+    required: false
+    type: str
+    default: ElasticSearch
   elasticsearch_version:
     description:
-      - Elasticsearch version to deploy.
+      - The version of ElasticSearch or OpenSearch to deploy.
     required: false
     type: str
     default: "2.3"
@@ -135,8 +142,8 @@ EXAMPLES = '''
 
 - ec2_elasticsearch:
     name: "my-cluster"
+    engine_type: ElasticSearch
     elasticsearch_version: "2.3"
-    engine_type: elasticsearch
     region: "eu-west-1"
     instance_type: "m3.medium.elasticsearch"
     instance_count: 2
@@ -179,6 +186,7 @@ def main():
             vpc_subnets = dict(type='list', elements='str', required=False),
             vpc_security_groups = dict(type='list', elements='str', required=False),
             snapshot_hour = dict(required=True, type='int'),
+            engine_type = dict(default='ElasticSearch'),
             elasticsearch_version = dict(default='2.3'),
             encryption_at_rest_enabled = dict(default=False),
             encryption_at_rest_kms_key_id = dict(required=False),
@@ -294,9 +302,10 @@ def main():
         changed = True
 
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            engine_version = "%s_%s" % (module.params.get('engine_type'), module.params.get('elasticsearch_version'))
             keyword_args = {
                 'DomainName': module.params.get('name'),
-                'ElasticsearchVersion': module.params.get('elasticsearch_version'),
+                'EngineVersion': engine_version,
                 'EncryptionAtRestOptions': encryption_at_rest_options,
                 'ElasticsearchClusterConfig': cluster_config,
                 'EBSOptions': ebs_options,
