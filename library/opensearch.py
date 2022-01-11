@@ -20,10 +20,10 @@
 
 DOCUMENTATION = """
 ---
-module: ec2_elasticsearch
-short_description: Creates ElasticSearch cluster on Amazon
+module: opensearch
+short_description: Creates OpenSearch or ElasticSearch cluster.
 description:
-  - It depends on boto3
+  - Creates a new Amazon OpenSearch Service domain.
 
 version_added: "2.1"
 author: "Jose Armesto (@fiunchinho)"
@@ -39,13 +39,13 @@ options:
       - The engine type to use. "ElasticSearch" | "OpenSearch"
     required: false
     type: str
-    default: ElasticSearch
-  elasticsearch_version:
+    default: OpenSearch
+  version:
     description:
       - The version of ElasticSearch or OpenSearch to deploy.
     required: false
     type: str
-    default: "2.3"
+    default: "1.1"
   region:
     description:
       - The AWS region to use.
@@ -191,15 +191,15 @@ EXAMPLES = '''
 
 - ec2_elasticsearch:
     name: "my-cluster"
-    engine_type: ElasticSearch
-    elasticsearch_version: "2.3"
+    engine_type: OpenSearch
+    version: "1.1"
     region: "eu-west-1"
-    instance_type: "m3.medium.elasticsearch"
+    instance_type: "m3.medium.search"
     instance_count: 2
     dedicated_master: True
     zone_awareness: True
     availability_zone_count: 2
-    dedicated_master_instance_type: "t2.micro.elasticsearch"
+    dedicated_master_instance_type: "t2.micro.search"
     dedicated_master_instance_count: 2
     ebs: True
     volume_type: "io1"
@@ -251,8 +251,8 @@ def main():
             vpc_subnets = dict(type='list', elements='str', required=False),
             vpc_security_groups = dict(type='list', elements='str', required=False),
             snapshot_hour = dict(required=False, type='int', default=0),
-            engine_type = dict(default='ElasticSearch'),
-            elasticsearch_version = dict(default='2.3'),
+            engine_type = dict(default='OpenSearch'),
+            version = dict(default='1.1'),
             encryption_at_rest_enabled = dict(type='bool', default=False),
             encryption_at_rest_kms_key_id = dict(required=False),
             cognito_enabled = dict(required=False, type='bool', default=False),
@@ -277,6 +277,8 @@ def main():
 
     region, ec2_url, aws_connect_params = get_aws_connection_info(module, True)
     client = boto3_conn(module=module, conn_type='client', resource='es', region=region, **aws_connect_params)
+
+    engine_version = "%s_%s" % (module.params.get('engine_type'), module.params.get('version'))
 
     cluster_config = {
            'InstanceType': module.params.get('instance_type'),
@@ -365,6 +367,9 @@ def main():
                 statement['Resource'] = '%s/*' % status['ARN']
                 pdoc = json.dumps(policy_dict)
 
+        if status[''] != engine_version:
+            changed = True
+
         if status['ElasticsearchClusterConfig'] != cluster_config:
             changed = True
 
@@ -390,6 +395,8 @@ def main():
         if changed:
             keyword_args = {
                 'DomainName': module.params.get('name'),
+                'EngineVersion': engine_version,
+                'EncryptionAtRestOptions': encryption_at_rest_options,
                 'ElasticsearchClusterConfig': cluster_config,
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
@@ -406,7 +413,6 @@ def main():
         changed = True
 
         if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            engine_version = "%s_%s" % (module.params.get('engine_type'), module.params.get('elasticsearch_version'))
             keyword_args = {
                 'DomainName': module.params.get('name'),
                 'EngineVersion': engine_version,
