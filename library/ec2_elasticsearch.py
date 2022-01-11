@@ -72,11 +72,34 @@ options:
       - A boolean value to indicate whether zone awareness is enabled.
     required: true
     type: bool
+  availability_zone_count:
+    description: An integer value to indicate the number of availability zones for a domain when zone awareness is enabled.
+      This should be equal to number of subnets if VPC endpoints is enabled.
+    required: false
+    type: int
   ebs:
     description:
       - Specifies whether EBS-based storage is enabled.
     required: true
     type: bool
+  warm_enabled:
+    description: True to enable UltraWarm storage.
+    required: false
+    type: bool
+    default: false
+  warm_type:
+    description: The instance type for the OpenSearch cluster's warm nodes.
+    required: false
+    type: str
+  warm_count:
+    description: The number of UltraWarm nodes in the cluster.
+    required: false
+    type: int
+  cold_storage_enabled:
+    description: True to enable cold storage.
+    required: false
+    type: bool
+    default: false
   dedicated_master_instance_type:
     description:
       - The instance type for a dedicated master node.
@@ -149,13 +172,22 @@ EXAMPLES = '''
     instance_count: 2
     dedicated_master: True
     zone_awareness: True
+    availability_zone_count: 2
     dedicated_master_instance_type: "t2.micro.elasticsearch"
     dedicated_master_instance_count: 2
     ebs: True
     volume_type: "standard"
     volume_size: 10
-    vpc_subnets: "subnet-e537d64a"
-    vpc_security_groups: "sg-dd2f13cb"
+    warm_enabled: true
+    warm_type: "ultrawarm1.medium.search"
+    warm_count: 1
+    cold_storage_enabled: false
+    vpc_subnets:
+      - "subnet-e537d64a"
+      - "subnet-e537d64b"
+    vpc_security_groups:
+      - "sg-dd2f13cb"
+      - "sg-dd2f13cc"
     snapshot_hour: 13
     access_policies: "{{ lookup('file', 'files/cluster_policies.json') | from_json }}"
     profile: "myawsaccount"
@@ -177,11 +209,16 @@ def main():
             instance_count = dict(required=True, type='int'),
             dedicated_master = dict(required=True, type='bool'),
             zone_awareness = dict(required=True, type='bool'),
+            availability_zone_count = dict(required=False, type='int'),
             dedicated_master_instance_type = dict(),
             dedicated_master_instance_count = dict(type='int'),
             ebs = dict(required=True, type='bool'),
             volume_type = dict(required=True),
             volume_size = dict(required=True, type='int'),
+            warm_enabled = dict(required=False, type='bool'),
+            warm_type = dict(required=False),
+            warm_count = dict(required=False, type='int'),
+            cold_storage_enabled = dict(required=False, type='bool'),
             access_policies = dict(required=True, type='dict'),
             vpc_subnets = dict(type='list', elements='str', required=False),
             vpc_security_groups = dict(type='list', elements='str', required=False),
@@ -206,8 +243,22 @@ def main():
            'InstanceType': module.params.get('instance_type'),
            'InstanceCount': int(module.params.get('instance_count')),
            'DedicatedMasterEnabled': module.params.get('dedicated_master'),
-           'ZoneAwarenessEnabled': module.params.get('zone_awareness')
+           'ZoneAwarenessEnabled': module.params.get('zone_awareness'),
+           'WarmEnabled': module.params.get('warm_enabled'),
     }
+    if module.params.get('zone_awareness'):
+        cluster_config['ZoneAwarenessConfig'] = {
+            'AvailabilityZoneCount': module.params.get('availability_zone_count'),
+        }
+
+    if module.params.get('warm_enabled'):
+        cluster_config['WarmType'] = module.params.get('warm_type')
+        cluster_config['WarmCount'] = module.params.get('warm_count')
+
+    if module.params.get('cold_storage_enabled'):
+        cluster_config['ColdStorageOptions'] = {
+            'Enabled': module.params.get('cold_storage_enabled')
+        }
 
     ebs_options = {
            'EBSEnabled': module.params.get('ebs')
