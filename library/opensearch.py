@@ -367,7 +367,15 @@ def main():
                 statement['Resource'] = '%s/*' % status['ARN']
                 pdoc = json.dumps(policy_dict)
 
-        if status[''] != engine_version:
+        if status['ElasticSearchVersion'] is not None:
+            if module.params.get('engine_type') != 'ElasticSearch':
+                changed = True
+            if module.params.get('version') != status['ElasticSearchVersion']:
+                changed = True
+        elif status['OpenSearchVersion'] is not None and engine_version != status['EngineVersion']:
+            changed = True
+
+        if status['EngineVersion'] != engine_version:
             changed = True
 
         if status['ElasticsearchClusterConfig'] != cluster_config:
