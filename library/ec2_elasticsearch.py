@@ -120,6 +120,11 @@ options:
       - Integer to specify the size of an EBS volume.
     required: true
     type: int
+  iops:
+    description:
+      - The IOPD for a Provisioned IOPS EBS volume (SSD).
+    required: false
+    type: int
   vpc_subnets:
     description:
       - Specifies the subnet ids for VPC endpoint.
@@ -176,8 +181,9 @@ EXAMPLES = '''
     dedicated_master_instance_type: "t2.micro.elasticsearch"
     dedicated_master_instance_count: 2
     ebs: True
-    volume_type: "standard"
+    volume_type: "io1"
     volume_size: 10
+    iops: 1000
     warm_enabled: true
     warm_type: "ultrawarm1.medium.search"
     warm_count: 1
@@ -215,6 +221,7 @@ def main():
             ebs = dict(required=True, type='bool'),
             volume_type = dict(required=True),
             volume_size = dict(required=True, type='int'),
+            iops = dict(required=False, type='int'),
             warm_enabled = dict(required=False, type='bool', default=False),
             warm_type = dict(required=False),
             warm_count = dict(required=False, type='int'),
@@ -235,6 +242,7 @@ def main():
                 ('warm_enabled', True, ['warm_type', 'warm_count']),
                 ('zone_awareness', True, ['availability_zone_count']),
                 ('dedicated_master', True, ['dedicated_master_instance_type', 'dedicated_master_instance_count']),
+                ('ebs', True, ['volume_type', 'volume_size']),
             ],
     )
 
@@ -295,6 +303,9 @@ def main():
     if ebs_options['EBSEnabled']:
         ebs_options['VolumeType'] = module.params.get('volume_type')
         ebs_options['VolumeSize'] = module.params.get('volume_size')
+
+    if module.params.get('iops') is not None:
+        ebs_options['Iops'] = module.params.get('iops')
 
     snapshot_options = {
         'AutomatedSnapshotStartHour': module.params.get('snapshot_hour')
