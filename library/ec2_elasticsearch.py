@@ -161,7 +161,27 @@ options:
       - If encryption_at_rest_enabled is True, this identifies the encryption key to use 
     required: false
     type: str
-    
+  cognito_enabled:
+    description:
+      - The option to enable Cognito for OpenSearch Dashboards authentication.
+    required: false
+    type: bool
+    default: false
+  cognito_user_pool_id:
+    description:
+      - The Cognito user pool ID for OpenSearch Dashboards authentication.
+    required: false
+    type: str
+  cognito_identity_pool_id:
+    description:
+      - The Cognito identity pool ID for OpenSearch Dashboards authentication.
+    required: false
+    type: str
+  cognito_role_arn:
+    description:
+      - The role ARN that provides OpenSearch permissions for accessing Cognito resources.
+    required: false
+    type: str
 requirements:
   - "python >= 2.6"
   - boto3
@@ -233,8 +253,12 @@ def main():
             snapshot_hour = dict(required=False, type='int', default=0),
             engine_type = dict(default='ElasticSearch'),
             elasticsearch_version = dict(default='2.3'),
-            encryption_at_rest_enabled = dict(default=False),
+            encryption_at_rest_enabled = dict(type='bool', default=False),
             encryption_at_rest_kms_key_id = dict(required=False),
+            cognito_enabled = dict(required=False, type='bool', default=False),
+            cognito_user_pool_id = dict(required=False),
+            cognito_identity_pool_id = dict(required=False),
+            cognito_role_arn = dict(required=False),
     ))
 
     module = AnsibleModule(
@@ -244,6 +268,7 @@ def main():
                 ('zone_awareness', True, ['availability_zone_count']),
                 ('dedicated_master', True, ['dedicated_master_instance_type', 'dedicated_master_instance_count']),
                 ('ebs', True, ['volume_type', 'volume_size']),
+                ('cognito_enabled', True, ['cognito_user_pool_id', 'cognito_identity_pool_id', 'cognito_role_arn']),
             ],
     )
 
@@ -276,13 +301,22 @@ def main():
            'EBSEnabled': module.params.get('ebs')
     }
 
-    encryption_at_rest_enabled = module.params.get('encryption_at_rest_enabled') == 'True'
+    encryption_at_rest_enabled = module.params.get('encryption_at_rest_enabled') == True
     encryption_at_rest_options = {
         'Enabled': encryption_at_rest_enabled
     }
 
     if encryption_at_rest_enabled:
         encryption_at_rest_options['KmsKeyId'] = module.params.get('encryption_at_rest_kms_key_id')
+
+    cognito_options = {}
+    if module.params.get('cognito_enabled'):
+        cognito_options['Enabled'] = True
+        cognito_options['UserPoolId'] = module.params.get('cognito_user_pool_id')
+        cognito_options['IdentityPoolId'] = module.params.get('cognito_identity_pool_id')
+        cognito_options['RoleArn'] = module.params.get('cognito_role_arn')
+    else:
+      cognito_options['Enabled'] = False
 
     vpc_options = {}
     vpc_subnets = module.params.get('vpc_subnets')
@@ -337,6 +371,9 @@ def main():
         if status['EBSOptions'] != ebs_options:
             changed = True
 
+        if status['CognitoOptions'] != cognito_options:
+            changed = True
+
         if 'VPCOptions' in status:
             if status['VPCOptions']['SubnetIds'] != vpc_options['SubnetIds']:
                 changed = True
@@ -357,6 +394,7 @@ def main():
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
                 'AccessPolicies': pdoc,
+                'CognitoOptions': cognito_options,
             }
 
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
@@ -377,6 +415,7 @@ def main():
                 'EBSOptions': ebs_options,
                 'SnapshotOptions': snapshot_options,
                 'AccessPolicies': pdoc,
+                'CognitoOptions': cognito_options,
             }
 
             if vpc_options['SubnetIds'] or vpc_options['SecurityGroupIds']:
