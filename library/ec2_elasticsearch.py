@@ -231,6 +231,11 @@ def main():
 
     module = AnsibleModule(
             argument_spec=argument_spec,
+            required_if=[
+                ('warm_enabled', True, ('warm_type', 'warm_count')),
+                ('zone_awareness', True, ('availability_zone_count')),
+                ('dedicated_master', True, ('dedicated_master_instance_type', 'dedicated_master_instance_count')),
+            ],
     )
 
     if not HAS_BOTO:
